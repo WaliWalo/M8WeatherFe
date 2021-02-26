@@ -26,7 +26,7 @@ function App(props: RouteComponentProps) {
   const [weather, setWeather] = useState<IWeather | null>(null);
   const [position, setPosition] = useState<IPosition | null>(null);
   const [input, setInput] = useState("");
-  const [cities, setCities] = useState<ICities | null>(null);
+  const [cities, setCities] = useState<ICities>({ cities: [] });
   const [background, setBackground] = useState<string>(
     `url("https://media.giphy.com/media/KzqJsfsd78wLe/giphy.gif")`
   );
@@ -37,7 +37,7 @@ function App(props: RouteComponentProps) {
     getLocation();
     if (Cookies.get("loggedIn")) {
       handleIsLoggedIn();
-      handleCities();
+      // handleCities();
       fetchUser();
     }
   }, []);
@@ -124,53 +124,46 @@ function App(props: RouteComponentProps) {
         const data = await res.json();
         setWeather({ ...data, name });
         await addFav(name, lat, lon);
-        // if (cities === null) {
-        //   const newData = { ...data, name: name };
-        //   setCities({ cities: [newData] });
-        // }
       } else {
         alert(`${res.status}: ${res.statusText}`);
       }
     }
   };
+
   useEffect(() => {
     // handleCities();
+    // console.log(cities);
     if (
       cities &&
       user.favourite &&
-      cities.cities.length !== user.favourite.length
+      cities.cities.length < user.favourite.length
     ) {
+      console.log("tes");
       handleCities();
     }
-  }, [cities?.cities.length, user]);
+  }, [cities?.cities.length, user.favourite.length]);
 
-  const handleCities = async () => {
-    console.log(user);
+  const handleCities = () => {
     if (user) {
-      user.favourite.forEach(async (fav: IFav) => {
-        try {
-          const res = await fetchWeather(fav.lat, fav.long);
-          if (res !== undefined) {
-            if (res.ok) {
-              const data = await res.json();
-              if (cities === null) {
-                const newData = { ...data, name: fav.name };
-                const newCities = { cities: [newData] };
-
-                setCities(newCities);
-              }
-
-              if (cities && cities?.cities.length < user.favourite.length) {
-                const newData = { ...data, name: fav.name };
-                const newCities = { cities: cities.cities.concat(newData) };
-
-                setCities(newCities);
-              }
-            }
-          }
-        } catch (error) {}
+      user.favourite.forEach((fav: IFav) => {
+        fetch(fav.lat, fav.long, fav.name);
       });
     }
+  };
+
+  const fetch = async (lat: number, long: number, name: string) => {
+    try {
+      const res = await fetchWeather(lat, long);
+      if (res !== undefined) {
+        if (res.ok) {
+          const data = await res.json();
+          const newData = { ...data, name: name };
+          const newCities = { cities: cities.cities.concat(newData) };
+          console.log(newCities);
+          setCities(newCities);
+        }
+      }
+    } catch (error) {}
   };
 
   const handleOnChange = (e: React.ChangeEvent<HTMLInputElement>) => {
