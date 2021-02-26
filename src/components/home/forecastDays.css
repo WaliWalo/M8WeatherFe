@@ -1,0 +1,12 @@
+.weekDayFont {
+  -webkit-text-stroke: 1px black; /* width and color */
+  font-size: larger;
+  color: white;
+}
+
+.monthDateFont {
+  -webkit-text-stroke: 1px black; /* width and color */
+  font-size: medium;
+  color: white;
+  white-space: nowrap;
+}

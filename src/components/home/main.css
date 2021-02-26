@@ -1,0 +1,12 @@
+.location {
+  -webkit-text-stroke: 1px black; /* width and color */
+  font-size: larger;
+  color: white;
+}
+
+.temp {
+  -webkit-text-stroke: 1px black; /* width and color */
+  font-size: larger;
+  color: white;
+  margin-top: 20%;
+}
