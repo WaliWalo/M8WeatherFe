@@ -8,6 +8,8 @@ export interface IPosition {
 export interface IHomeProps {
   routeProps: RouteComponentProps;
   weather: IWeather | null;
+  isLoggedIn: boolean;
+  handleIsLoggedIn: () => void;
 }
 
 export interface ISelectCityProps {
@@ -26,7 +28,24 @@ export interface ICities {
   cities: Array<IWeather>;
 }
 
-// type weather = object;
+export interface IFav {
+  name: string;
+  lat: number;
+  long: number;
+}
+
+export interface ILoginProps {
+  handleIsLoggedIn: () => void;
+  routeProps: RouteComponentProps;
+}
+
+export interface IUser {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  // favourite?: Object;
+}
 
 export interface IMainProps {
   weather: IWeather | null;

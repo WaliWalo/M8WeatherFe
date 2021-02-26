@@ -7,11 +7,15 @@ import { Route } from "react-router-dom";
 import Home from "./components/home/Home";
 import SelectCity from "./components/selectCity/SelectCity";
 import Search from "./components/search/Search";
-import { fetchWeather, getCoordinates } from "./api/weatherApi";
-import { ICities, IPosition, IWeather } from "./types";
+import { addFav, fetchWeather, getCoordinates } from "./api/weatherApi";
+import { ICities, IPosition, IWeather, IFav } from "./types";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { RouteComponentProps } from "react-router-dom";
 import "./App.css";
+import Login from "./components/login/Login";
+import Registration from "./components/login/Registration";
+import Cookies from "js-cookie";
+import { getUser } from "./api/authApi";
 
 function App(props: RouteComponentProps) {
   // const dispatch = useDispatch();
@@ -26,15 +30,21 @@ function App(props: RouteComponentProps) {
   const [background, setBackground] = useState<string>(
     `url("https://media.giphy.com/media/KzqJsfsd78wLe/giphy.gif")`
   );
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState({ favourite: [] });
 
   useEffect(() => {
     getLocation();
+    if (Cookies.get("loggedIn")) {
+      handleIsLoggedIn();
+      handleCities();
+      fetchUser();
+    }
   }, []);
 
   useEffect(() => {
     if (position) {
-      console.log(position);
-      getWeather(position.lat, position.lng);
+      getWeather("Current Location", position.lat, position.lng);
     }
   }, [position]);
 
@@ -57,6 +67,23 @@ function App(props: RouteComponentProps) {
       }
     }
   }, [weather]);
+
+  const fetchUser = async () => {
+    const res = await getUser();
+    if (res.ok) {
+      const user = await res.json();
+      if (user !== null) {
+        setUser(user);
+        // setCities(user.favourite);
+        // console.log(cities);
+        // user.favourite.forEach((fav: IFav) => {
+        //   getWeather(fav.name, fav.lat, fav.long);
+        // });
+      }
+    } else {
+      console.log(res);
+    }
+  };
 
   function getLocation() {
     if (navigator.geolocation) {
@@ -90,29 +117,59 @@ function App(props: RouteComponentProps) {
     }
   }
 
-  const getWeather = async (lat: number, lon: number) => {
+  const getWeather = async (name: string, lat: number, lon: number) => {
     const res = await fetchWeather(lat, lon);
     if (res !== undefined) {
       if (res.ok) {
         const data = await res.json();
-        if (input === "") {
-          setWeather({ ...data, name: "Current Location" });
-        } else {
-          setWeather({ ...data, name: input });
-          setInput("");
-        }
-
-        const newData = { ...data, name: "Current Location" };
-        setCities({ cities: [newData] });
-        if (cities) {
-          const newData = { ...data, name: input };
-          const newCities = { cities: cities.cities.concat(newData) };
-          setCities(newCities);
-          setInput("");
-        }
+        setWeather({ ...data, name });
+        await addFav(name, lat, lon);
+        // if (cities === null) {
+        //   const newData = { ...data, name: name };
+        //   setCities({ cities: [newData] });
+        // }
       } else {
         alert(`${res.status}: ${res.statusText}`);
       }
+    }
+  };
+  useEffect(() => {
+    // handleCities();
+    if (
+      cities &&
+      user.favourite &&
+      cities.cities.length !== user.favourite.length
+    ) {
+      handleCities();
+    }
+  }, [cities?.cities.length, user]);
+
+  const handleCities = async () => {
+    console.log(user);
+    if (user) {
+      user.favourite.forEach(async (fav: IFav) => {
+        try {
+          const res = await fetchWeather(fav.lat, fav.long);
+          if (res !== undefined) {
+            if (res.ok) {
+              const data = await res.json();
+              if (cities === null) {
+                const newData = { ...data, name: fav.name };
+                const newCities = { cities: [newData] };
+
+                setCities(newCities);
+              }
+
+              if (cities && cities?.cities.length < user.favourite.length) {
+                const newData = { ...data, name: fav.name };
+                const newCities = { cities: cities.cities.concat(newData) };
+
+                setCities(newCities);
+              }
+            }
+          }
+        } catch (error) {}
+      });
     }
   };
 
@@ -140,8 +197,9 @@ function App(props: RouteComponentProps) {
         if (data.results.length > 0) {
           const lat = data.results[0].geometry.lat;
           const lang = data.results[0].geometry.lng;
+          // await addFav(input, lat, lang);
           setPosition({ lat: lat, lng: lang });
-          getWeather(lat, lang);
+          getWeather(input, lat, lang);
         } else {
           alert("No location found");
         }
@@ -149,6 +207,10 @@ function App(props: RouteComponentProps) {
         alert(`${res.status}: ${res.statusText}`);
       }
     }
+  };
+
+  const handleIsLoggedIn = () => {
+    setIsLoggedIn(!isLoggedIn);
   };
 
   return (
@@ -164,19 +226,39 @@ function App(props: RouteComponentProps) {
       <Route
         path="/"
         exact
-        render={(props) => <Home routeProps={props} weather={weather} />}
-      />
-      <Route
-        path="/select"
-        exact
         render={(props) => (
-          <SelectCity
+          <Home
             routeProps={props}
-            cities={cities}
-            handleSelectCity={(city: IWeather) => handleSelectCity(city)}
+            weather={weather}
+            handleIsLoggedIn={handleIsLoggedIn}
+            isLoggedIn={isLoggedIn}
           />
         )}
       />
+
+      <Route
+        path="/login"
+        exact
+        render={(props) => (
+          <Login routeProps={props} handleIsLoggedIn={handleIsLoggedIn} />
+        )}
+      />
+
+      <Route path="/register" exact render={(props) => <Registration />} />
+      {user && cities && cities.cities.length > 0 && (
+        <Route
+          path="/select"
+          exact
+          render={(props) => (
+            <SelectCity
+              routeProps={props}
+              cities={cities}
+              handleSelectCity={(city: IWeather) => handleSelectCity(city)}
+            />
+          )}
+        />
+      )}
+
       <Route
         path="/search"
         exact
